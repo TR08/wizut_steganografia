@@ -19,7 +19,8 @@
         <Label x:Name="SaveImgPath" Content="" HorizontalAlignment="Left" Margin="635,445,0,0" VerticalAlignment="Top" MaxWidth="400" ToolTip=""/>
 
         <Button x:Name="PutMsgBtn" Content="Put msg" HorizontalAlignment="Left" Margin="30,485,0,0" VerticalAlignment="Top" Width="75" Click="PutMsgBtn_Click"/>
-        <Button x:Name="ReadMsgBtn" Content="Read msg" HorizontalAlignment="Left" Margin="110,485,0,0" VerticalAlignment="Top" Width="75"/>
+        <Button x:Name="ReadMsgBtn" Content="Read msg" HorizontalAlignment="Left" Margin="110,485,0,0" VerticalAlignment="Top" Width="75" Click="ReadMsgBtn_Click"/>
+        <Label x:Name="StatusLabel" Content="" HorizontalAlignment="Left" Margin="200,485,0,0" VerticalAlignment="Top" Width="835"/>
         <TextBox x:Name="CustomMsg" HorizontalAlignment="Left" Height="155" Margin="30,510,0,0" TextWrapping="Wrap" Text="Put your message here." VerticalAlignment="Top" Width="1005"/>
 
         <Label HorizontalAlignment="Left" Height="30" Margin="30,675,0,0" VerticalAlignment="Top" Width="120" Content="Encryption key:"/>
