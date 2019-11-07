@@ -15,7 +15,7 @@
         <Border BorderThickness="1" BorderBrush="Black" HorizontalAlignment="Right" Height="400" Margin="0,30,30,0" VerticalAlignment="Top" Width="480">
             <Image x:Name="SaveImg" Height="400" Width="480" Source="/images/no-img.png"/>
         </Border>
-        <Button x:Name="SaveImgBtn" Content="Save image" HorizontalAlignment="Left" Margin="555,445,0,0" VerticalAlignment="Top" Width="75"/>
+        <Button x:Name="SaveImgBtn" Content="Save image" HorizontalAlignment="Left" Margin="555,445,0,0" VerticalAlignment="Top" Width="75" Click="SaveImgBtn_Click"/>
         <Label x:Name="SaveImgPath" Content="" HorizontalAlignment="Left" Margin="635,445,0,0" VerticalAlignment="Top" MaxWidth="400" ToolTip=""/>
 
         <Button x:Name="PutMsgBtn" Content="Put msg" HorizontalAlignment="Left" Margin="30,485,0,0" VerticalAlignment="Top" Width="75" Click="PutMsgBtn_Click"/>
@@ -24,9 +24,7 @@
         <TextBox x:Name="CustomMsg" HorizontalAlignment="Left" Height="155" Margin="30,510,0,0" TextWrapping="Wrap" Text="Put your message here." VerticalAlignment="Top" Width="1005"/>
 
         <Label HorizontalAlignment="Left" Height="30" Margin="30,675,0,0" VerticalAlignment="Top" Width="120" Content="Encryption key:"/>
-        <TextBox x:Name="EncKey" HorizontalAlignment="Right" Height="30" Margin="0,675,562,0" TextWrapping="Wrap" Text="mYk3Y" VerticalAlignment="Top" Width="355"/>
-        <Label HorizontalAlignment="Left" Height="30" Margin="555,675,0,0" VerticalAlignment="Top" Width="120" Content="Encryption IV:"/>
-        <TextBox x:Name="EncIV" HorizontalAlignment="Right" Height="30" Margin="0,675,37,0" TextWrapping="Wrap" Text="aE23Nc" VerticalAlignment="Top" Width="355"/>
+        <TextBox x:Name="EncKey" HorizontalAlignment="Right" Height="30" Margin="0,675,37,0" TextWrapping="Wrap" Text="mYk3Y" VerticalAlignment="Top" Width="880"/>
         <Label HorizontalAlignment="Left" Height="30" Margin="30,710,0,0" VerticalAlignment="Top" Width="120" Content="Steganographic key:"/>
         <TextBox x:Name="StegKey" HorizontalAlignment="Right" Height="30" Margin="0,710,37,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="880"/>
     </Grid>

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -25,7 +26,7 @@ namespace wizut_steganografia
     public partial class MainWindow : Window
     {
         private bool _imageLoaded, _imageEncrypted;
-        private byte[] _encKey, _encIV;
+        private byte[] _encKey;
 
         public MainWindow()
         {
@@ -33,7 +34,6 @@ namespace wizut_steganografia
             _imageLoaded = false;
             _imageEncrypted = false;
             _encKey = Encoding.UTF8.GetBytes("mYk3Y");
-            _encIV = Encoding.UTF8.GetBytes("aE23Nc");
         }
 
         private void PutMsgBtn_Click(object sender, RoutedEventArgs e)
@@ -55,13 +55,15 @@ namespace wizut_steganografia
                 _imageEncrypted = true;
                 UpdateStatus("Message embedded into bitmap file.");
                 ImgToMod.Dispose();
+
+                Bitmap img1 = new Bitmap(LoadedImgPath.Content.ToString());
+                Bitmap img2 = new Bitmap(LoadedImgPath.Content.ToString());
             }
         }
 
         private byte[] EncodeMsg(string MsgToPut)
         {
             if (EncKey.Text.Length > 0) _encKey = Encoding.UTF8.GetBytes(EncKey.Text);
-            if (EncIV.Text.Length > 0) _encIV = Encoding.UTF8.GetBytes(EncIV.Text);
 
             byte[] encrypted;
             using (Aes aesAlg = Aes.Create())
@@ -85,8 +87,31 @@ namespace wizut_steganografia
                     }
                 }
             }
-
             return encrypted;
+        }
+
+        private string DecodeMsg(byte[] encodedMsg)
+        {
+            string plaintext = null;
+            
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = _encKey.Take(32).ToArray();
+                aesAlg.IV = _encKey.Skip(32).ToArray().Take(16).ToArray();
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+                using (MemoryStream msDecrypt = new MemoryStream(encodedMsg))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+                            plaintext = srDecrypt.ReadToEnd();
+                        }
+                    }
+                }
+
+            }
+            return plaintext;
         }
 
         private Bitmap PutMsg(Bitmap ImgToMod, byte[] MsgToPut)
@@ -103,18 +128,18 @@ namespace wizut_steganografia
                 i;
             for (i=0; i < NewMsg.Length; ++i)
             {
-                for (int j = 0; j < 4; ++j)
+                for (int j = 3; j >= 0; --j)
                 {
                     Color CurPixel = ImgToMod.GetPixel(x, y);
                     byte R = CurPixel.R,
                         G = CurPixel.G,
-                        B = CurPixel.B,
-                        a1 = GetBit(CurPixel.R, 0),
+                        B = CurPixel.B;
+                    bool a1 = GetBit(CurPixel.R, 0),
                         a2 = GetBit(CurPixel.G, 0),
                         a3 = GetBit(CurPixel.B, 0);
 
-                    byte M1 = GetBit(NewMsg[i], i*2),    //x1
-                        M2 = GetBit(NewMsg[i], i*2+1);  //x2
+                    bool M1 = GetBit(NewMsg[i], j*2+1),    //x1
+                        M2 = GetBit(NewMsg[i], j*2);  //x2
 
                     if (M1 == (a1 ^ a3))
                     {
@@ -140,70 +165,140 @@ namespace wizut_steganografia
                         }
                     }
                 }
-
-
             }
-
             return ImgToMod;
         }
 
-        private byte GetBit(byte fromByte, int bitNum)
+        private bool GetBit(byte fromByte, int bitNum)
         {
-            return Convert.ToByte((fromByte >> bitNum) & 1);
+            return Convert.ToBoolean((fromByte >> bitNum) & 1);
         }
 
         private void LoadImgBtn_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog op = new OpenFileDialog
+            OpenFileDialog ofd = new OpenFileDialog
             {
                 Title = "Select a picture",
                 Filter = "Bitmap graphics|*.bmp"
             };
 
-            if (op.ShowDialog() == true)
+            if (ofd.ShowDialog() == true)
             {
-                LoadedImg.Source = new BitmapImage(new Uri(op.FileName));
-                LoadedImgPath.Content = op.FileName;
-                LoadedImgPath.ToolTip = op.FileName;
+                LoadedImg.Source = new BitmapImage(new Uri(ofd.FileName));
+                LoadedImgPath.Content = ofd.FileName;
+                LoadedImgPath.ToolTip = ofd.FileName;
                 _imageLoaded = true;
                 UpdateStatus("Image loaded.");
             }
             else UpdateStatus("Image not loaded.");
         }
 
+        private void SaveImgBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog sfd = new SaveFileDialog
+            {
+                Title = "Choose location and name",
+                Filter = "Bitmap graphics|*.bmp"
+            };
+            if (sfd.ShowDialog() == true)
+            {
+                Bitmap SaveBitmap = BitmapSource2Bitmap(SaveImg.Source);
+                //SaveBitmap.Save(sfd.FileName, ImageFormat.Bmp);
+                using (MemoryStream memory = new MemoryStream())
+                {
+                    using (FileStream fs = new FileStream(sfd.FileName, FileMode.Create, FileAccess.ReadWrite))
+                    {
+                        SaveBitmap.Save(memory, ImageFormat.Bmp);
+                        byte[] bytes = memory.ToArray();
+                        fs.Write(bytes, 0, bytes.Length);
+                    }
+                }
+
+
+                SaveImgPath.Content = sfd.FileName;
+                SaveImgPath.ToolTip = sfd.FileName;
+                UpdateStatus("Image saved.");
+            }
+            else UpdateStatus("Image not saved.");
+        }
+
         private void ReadMsgBtn_Click(object sender, RoutedEventArgs e)
         {
-            Bitmap ImgToRead = new Bitmap(LoadedImgPath.Content.ToString());
-            //byte[] EncodedMsg = EncodeMsg(CustomMsg.Text);
+            Bitmap ImgToRead = BitmapSource2Bitmap(SaveImg.Source);
             byte[] msg = ReadMsg(ImgToRead);
-            msg = DecodeMsg(msg);
-            CustomMsg.Text = msg.ToString();
+            CustomMsg.Text = DecodeMsg(msg);
             UpdateStatus("Message read and decoded.");
         }
 
         private byte[] ReadMsg(Bitmap imgToRead)
         {
-            byte[] lenInBytes = ReadTwoBytes(imgToRead.GetPixel(0, 0));
-            int len = lenInBytes[0] * 256 + lenInBytes[1];
-            for (int i = 1; i <= len; ++i)
-            {
+            MyPoint[] idx = CalculateIndexes(new MyPoint(0, 0), imgToRead.Width);
+            byte lenInByte1 = ReadByte(imgToRead, idx);
+            idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
+            byte lenInByte2 = ReadByte(imgToRead, idx);
+            int len = lenInByte1 * 256 + lenInByte2;
 
+            byte[] res = new byte[len];
+
+            for (int i = 0; i < len; i++)
+            {
+                idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
+                res[i] = ReadByte(imgToRead, idx);
             }
-            return imgToRead;
+            return res;
         }
 
-        private byte[] ReadTwoBytes(Color pixel)
+        private byte ReadByte(Bitmap imgToRead, MyPoint[] idx)
         {
-            byte M1 = GetBit(pixel.R, 0),
+            byte res = 0;
+            Color[] px = new Color[4];
+            for (int i = 0; i < 4; ++i)
+            {
+                px[i] = imgToRead.GetPixel(idx[i].X, idx[i].Y);
+                bool[] bits = ReadTwoBits(px[i]);
+                res <<= 1;
+                res |= Convert.ToByte(bits[0]);
+                res <<= 1;
+                res |= Convert.ToByte(bits[1]);
+            }
+            return res;
+        }
+
+        private bool[] ReadTwoBits(Color pixel)
+        {
+            bool M1 = GetBit(pixel.R, 0),
                 M2 = GetBit(pixel.G, 0);
-            if (GetBit(pixel.B, 0) == 0)
+            if (!GetBit(pixel.B, 0)) // a3==0
             {
-                return new byte[] { M1, M2 };
+                return new bool[] { M1, M2 };
             }
-            else //a3 == 1
+            else
             {
-                return new byte[] { (M1^=1), (M2^=1) };
+                return new bool[] { (!M1), (!M2) };
             }
+        }
+
+        private MyPoint[] CalculateIndexes(MyPoint start, int width)
+        {
+            MyPoint[] indexes = new MyPoint[] { start, new MyPoint(0, 0), new MyPoint(0, 0), new MyPoint(0, 0) };
+            
+            for (int i = 1; i < 4; ++i)
+            {
+                indexes[i].Y = indexes[i - 1].Y;
+                indexes[i].X = indexes[i - 1].X + 1;
+                if (indexes[i].X >= width)
+                {
+                    indexes[i].X = 0;
+                    indexes[i].Y++;
+                }
+            }
+            return indexes;
+        }
+
+        private MyPoint GetNextPoint(MyPoint CurPoint, int width)
+        {
+            if (CurPoint.X + 1 < width) return new MyPoint(CurPoint.X + 1, CurPoint.Y);
+            else return new MyPoint(0, CurPoint.Y + 1);
         }
 
         public BitmapSource Bitmap2BitmapSource(Bitmap bitmap)
@@ -220,6 +315,26 @@ namespace wizut_steganografia
 
             bitmap.UnlockBits(bitmapData);
             return bitmapSource;
+        }
+        
+        private Bitmap BitmapSource2Bitmap(BitmapSource bitmapsource)
+        {
+            Bitmap bitmap;
+            using (MemoryStream outStream = new MemoryStream())
+            {
+                BitmapEncoder enc = new BmpBitmapEncoder();
+                enc.Frames.Add(BitmapFrame.Create(bitmapsource));
+                enc.Save(outStream);
+                bitmap = new Bitmap(outStream);
+            }
+            return bitmap;
+        }
+
+        private Bitmap BitmapSource2Bitmap(System.Windows.Media.ImageSource imagesource)
+        {
+            Bitmap bitmap;
+            bitmap = BitmapSource2Bitmap(imagesource as BitmapSource);
+            return bitmap;
         }
 
         private void UpdateStatus(string status)
