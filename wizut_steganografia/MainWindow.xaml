@@ -10,13 +10,15 @@
         <Border BorderThickness="1" BorderBrush="Black" HorizontalAlignment="Left" Height="400" Margin="30,30,0,0" VerticalAlignment="Top" Width="480">
             <Image x:Name="LoadedImg" Height="400" Width="480" Source="/images/no-img.png"/>
         </Border>
-        <Button x:Name="LoadImgBtn" Content="Load image" HorizontalAlignment="Left" Margin="30,445,0,0" VerticalAlignment="Top" Width="75" Click="LoadImgBtn_Click"/>
-        <Label x:Name="LoadedImgPath" Content="" HorizontalAlignment="Left" Margin="110,445,0,0" VerticalAlignment="Top" MaxWidth="400" ToolTip=""/>
+        <Button x:Name="LoadImgBtn" Content="Load image" HorizontalAlignment="Left" Margin="30,435,0,0" VerticalAlignment="Top" Width="75" Click="LoadImgBtn_Click"/>
+        <Label x:Name="LoadedImgPath" Content="" HorizontalAlignment="Left" Margin="110,435,0,0" VerticalAlignment="Top" MaxWidth="400" ToolTip="" MouseDoubleClick="ImgPath_MouseDoubleClick"/>
+        <CheckBox x:Name="ReadFromLoaded" Content="Read message from loaded file" HorizontalAlignment="Left" Margin="30,460,0,0" VerticalAlignment="Top"/>
+        
         <Border BorderThickness="1" BorderBrush="Black" HorizontalAlignment="Right" Height="400" Margin="0,30,30,0" VerticalAlignment="Top" Width="480">
             <Image x:Name="SaveImg" Height="400" Width="480" Source="/images/no-img.png"/>
         </Border>
-        <Button x:Name="SaveImgBtn" Content="Save image" HorizontalAlignment="Left" Margin="555,445,0,0" VerticalAlignment="Top" Width="75" Click="SaveImgBtn_Click"/>
-        <Label x:Name="SaveImgPath" Content="" HorizontalAlignment="Left" Margin="635,445,0,0" VerticalAlignment="Top" MaxWidth="400" ToolTip=""/>
+        <Button x:Name="SaveImgBtn" Content="Save image" HorizontalAlignment="Left" Margin="555,435,0,0" VerticalAlignment="Top" Width="75" Click="SaveImgBtn_Click"/>
+        <Label x:Name="SaveImgPath" Content="" HorizontalAlignment="Left" Margin="635,435,0,0" VerticalAlignment="Top" MaxWidth="400" ToolTip="" MouseDoubleClick="ImgPath_MouseDoubleClick"/>
 
         <Button x:Name="PutMsgBtn" Content="Put msg" HorizontalAlignment="Left" Margin="30,485,0,0" VerticalAlignment="Top" Width="75" Click="PutMsgBtn_Click"/>
         <Button x:Name="ReadMsgBtn" Content="Read msg" HorizontalAlignment="Left" Margin="110,485,0,0" VerticalAlignment="Top" Width="75" Click="ReadMsgBtn_Click"/>

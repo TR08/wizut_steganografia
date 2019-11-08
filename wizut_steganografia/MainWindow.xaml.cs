@@ -1,21 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Microsoft.Win32;
 
 namespace wizut_steganografia
@@ -46,19 +39,36 @@ namespace wizut_steganografia
                 Bitmap ImgToMod = new Bitmap(LoadedImgPath.Content.ToString());
                 byte[] EncodedMsg = EncodeMsg(CustomMsg.Text);
                 ImgToMod = PutMsg(ImgToMod, EncodedMsg);
+                //_bmp = new Bitmap(ImgToMod);
                 if (ImgToMod == null)
                 {
-                    UpdateStatus("Message is too long for this bitmap file.");
+                    UpdateStatus("Message is too long for this bitmap file.", true);
                     return;
                 }
-                SaveImg.Source = Bitmap2BitmapSource(ImgToMod);
+                //SaveImg.Source = Bitmap2BitmapSource(ImgToMod);
+                SaveImg.Source = ImageSourceFromBitmap(ImgToMod);
+                //_bmp = GetBitmap((BitmapSource)SaveImg.Source);
                 _imageEncrypted = true;
                 UpdateStatus("Message embedded into bitmap file.");
                 ImgToMod.Dispose();
-
-                Bitmap img1 = new Bitmap(LoadedImgPath.Content.ToString());
-                Bitmap img2 = new Bitmap(LoadedImgPath.Content.ToString());
             }
+            else
+            {
+                UpdateStatus("No image to embed the message. Load something first.", true);
+            }
+        }
+
+        [DllImport("gdi32.dll", EntryPoint = "DeleteObject")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool DeleteObject([In] IntPtr hObject);
+        public System.Windows.Media.ImageSource ImageSourceFromBitmap(Bitmap bmp)
+        {
+            var handle = bmp.GetHbitmap();
+            try
+            {
+                return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            }
+            finally { DeleteObject(handle); }
         }
 
         private byte[] EncodeMsg(string MsgToPut)
@@ -70,7 +80,7 @@ namespace wizut_steganografia
             {
                 using (SHA512 shaM = new SHA512Managed())
                 {
-                    _encKey = shaM.ComputeHash(_encKey);
+                    _encKey = shaM.ComputeHash(Encoding.UTF8.GetBytes(EncKey.Text));
                 }
                 aesAlg.Key = _encKey.Take(32).ToArray();
                 aesAlg.IV = _encKey.Skip(32).ToArray().Take(16).ToArray();
@@ -93,9 +103,13 @@ namespace wizut_steganografia
         private string DecodeMsg(byte[] encodedMsg)
         {
             string plaintext = null;
-            
+
             using (Aes aesAlg = Aes.Create())
             {
+                using (SHA512 shaM = new SHA512Managed())
+                {
+                    _encKey = shaM.ComputeHash(Encoding.UTF8.GetBytes(EncKey.Text));
+                }
                 aesAlg.Key = _encKey.Take(32).ToArray();
                 aesAlg.IV = _encKey.Skip(32).ToArray().Take(16).ToArray();
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
@@ -109,7 +123,6 @@ namespace wizut_steganografia
                         }
                     }
                 }
-
             }
             return plaintext;
         }
@@ -190,44 +203,76 @@ namespace wizut_steganografia
                 _imageLoaded = true;
                 UpdateStatus("Image loaded.");
             }
-            else UpdateStatus("Image not loaded.");
+            else UpdateStatus("Image not loaded.", true);
         }
 
         private void SaveImgBtn_Click(object sender, RoutedEventArgs e)
         {
-            SaveFileDialog sfd = new SaveFileDialog
+            if (_imageEncrypted)
             {
-                Title = "Choose location and name",
-                Filter = "Bitmap graphics|*.bmp"
-            };
-            if (sfd.ShowDialog() == true)
-            {
-                Bitmap SaveBitmap = BitmapSource2Bitmap(SaveImg.Source);
-                //SaveBitmap.Save(sfd.FileName, ImageFormat.Bmp);
-                using (MemoryStream memory = new MemoryStream())
+                SaveFileDialog sfd = new SaveFileDialog
                 {
-                    using (FileStream fs = new FileStream(sfd.FileName, FileMode.Create, FileAccess.ReadWrite))
-                    {
-                        SaveBitmap.Save(memory, ImageFormat.Bmp);
-                        byte[] bytes = memory.ToArray();
-                        fs.Write(bytes, 0, bytes.Length);
-                    }
+                    Title = "Choose location and name",
+                    Filter = "Bitmap graphics|*.bmp"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    Bitmap SaveBitmap = GetBitmap((BitmapSource)SaveImg.Source);
+                    SaveBitmap.Save(sfd.FileName, ImageFormat.Bmp);
+                    SaveBitmap.Dispose();
+
+                    SaveImgPath.Content = sfd.FileName;
+                    SaveImgPath.ToolTip = sfd.FileName;
+                    UpdateStatus("Image saved.");
                 }
-
-
-                SaveImgPath.Content = sfd.FileName;
-                SaveImgPath.ToolTip = sfd.FileName;
-                UpdateStatus("Image saved.");
+                else UpdateStatus("Image not saved.", true);
             }
-            else UpdateStatus("Image not saved.");
+            else UpdateStatus("No image to save.", true);
+        }
+
+        private Bitmap GetBitmap(BitmapSource source)
+        {
+            Bitmap bmp = new Bitmap(
+              source.PixelWidth,
+              source.PixelHeight,
+              PixelFormat.Format32bppPArgb);
+            BitmapData data = bmp.LockBits(
+              new System.Drawing.Rectangle(System.Drawing.Point.Empty, bmp.Size),
+              ImageLockMode.WriteOnly,
+              PixelFormat.Format32bppPArgb);
+            source.CopyPixels(
+              Int32Rect.Empty,
+              data.Scan0,
+              data.Height * data.Stride,
+              data.Stride);
+            bmp.UnlockBits(data);
+            return bmp;
         }
 
         private void ReadMsgBtn_Click(object sender, RoutedEventArgs e)
         {
-            Bitmap ImgToRead = BitmapSource2Bitmap(SaveImg.Source);
-            byte[] msg = ReadMsg(ImgToRead);
-            CustomMsg.Text = DecodeMsg(msg);
-            UpdateStatus("Message read and decoded.");
+            if (_imageEncrypted || ((bool)ReadFromLoaded.IsChecked && _imageLoaded))
+            {
+                Bitmap ImgToRead;
+                if ((bool)ReadFromLoaded.IsChecked) ImgToRead = BitmapSource2Bitmap(LoadedImg.Source);
+                else ImgToRead = BitmapSource2Bitmap(SaveImg.Source);
+                byte[] msg = ReadMsg(ImgToRead);
+                try
+                {
+                    CustomMsg.Text = DecodeMsg(msg);
+                    UpdateStatus("Message read and decoded.");
+                }
+                catch (Exception err)
+                {
+                    CustomMsg.Text = err.Message;
+                    UpdateStatus("Error during decoding. Most probably incorrect password. Check error msg below.", true);
+                }
+                ImgToRead.Dispose();
+            }
+            else
+            {
+                UpdateStatus("No image to read message from.", true);
+            }
         }
 
         private byte[] ReadMsg(Bitmap imgToRead)
@@ -300,22 +345,6 @@ namespace wizut_steganografia
             if (CurPoint.X + 1 < width) return new MyPoint(CurPoint.X + 1, CurPoint.Y);
             else return new MyPoint(0, CurPoint.Y + 1);
         }
-
-        public BitmapSource Bitmap2BitmapSource(Bitmap bitmap)
-        {
-            var bitmapData = bitmap.LockBits(
-                new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
-                System.Drawing.Imaging.ImageLockMode.ReadOnly, bitmap.PixelFormat);
-
-            var bitmapSource = BitmapSource.Create(
-                bitmapData.Width, bitmapData.Height,
-                bitmap.HorizontalResolution, bitmap.VerticalResolution,
-                System.Windows.Media.PixelFormats.Bgr24, null,
-                bitmapData.Scan0, bitmapData.Stride * bitmapData.Height, bitmapData.Stride);
-
-            bitmap.UnlockBits(bitmapData);
-            return bitmapSource;
-        }
         
         private Bitmap BitmapSource2Bitmap(BitmapSource bitmapsource)
         {
@@ -333,14 +362,30 @@ namespace wizut_steganografia
         private Bitmap BitmapSource2Bitmap(System.Windows.Media.ImageSource imagesource)
         {
             Bitmap bitmap;
-            bitmap = BitmapSource2Bitmap(imagesource as BitmapSource);
+            bitmap = BitmapSource2Bitmap((BitmapSource)imagesource);
             return bitmap;
         }
 
-        private void UpdateStatus(string status)
+        private void ImgPath_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start("explorer.exe", Directory.GetParent(((System.Windows.Controls.Label)sender).Content.ToString()).FullName);
+                UpdateStatus("Dir opened.");
+            }
+            catch (Exception err)
+            {
+                CustomMsg.Text = err.Message;
+                UpdateStatus("Cannot open the dir. Error msg below.", true);
+            }
+        }
+
+        private void UpdateStatus(string status, bool isError = false)
         {
             DateTime localDate = DateTime.Now;
+            StatusLabel.Foreground = isError ? System.Windows.Media.Brushes.Red : System.Windows.Media.Brushes.Green;
             StatusLabel.Content = localDate + " - " + status;
+            StatusLabel.ToolTip = status;
         }
     }
 }
