@@ -23,12 +23,11 @@
         <Button x:Name="PutMsgBtn" Content="Put msg" HorizontalAlignment="Left" Margin="30,485,0,0" VerticalAlignment="Top" Width="75" Click="PutMsgBtn_Click"/>
         <Button x:Name="ReadMsgBtn" Content="Read msg" HorizontalAlignment="Left" Margin="110,485,0,0" VerticalAlignment="Top" Width="75" Click="ReadMsgBtn_Click"/>
         <Label x:Name="StatusLabel" Content="" HorizontalAlignment="Left" Margin="200,485,0,0" VerticalAlignment="Top" Width="835"/>
-        <TextBox x:Name="CustomMsg" HorizontalAlignment="Left" Height="155" Margin="30,510,0,0" TextWrapping="Wrap" Text="Put your message here." VerticalAlignment="Top" Width="1005"/>
+        <TextBox x:Name="CustomMsg" MaxLength="5000" HorizontalAlignment="Left" Height="155" Margin="30,510,0,0" TextWrapping="Wrap" Text="Put your message here." VerticalAlignment="Top" Width="1005"/>
 
         <Label HorizontalAlignment="Left" Height="30" Margin="30,675,0,0" VerticalAlignment="Top" Width="120" Content="Encryption key:"/>
         <TextBox x:Name="EncKey" HorizontalAlignment="Right" Height="30" Margin="0,675,37,0" TextWrapping="Wrap" Text="mYk3Y" VerticalAlignment="Top" Width="880"/>
         <Label HorizontalAlignment="Left" Height="30" Margin="30,710,0,0" VerticalAlignment="Top" Width="120" Content="Steganographic key:"/>
         <TextBox x:Name="StegKey" HorizontalAlignment="Right" Height="30" Margin="0,710,37,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="880"/>
-        <Button Content="Button" HorizontalAlignment="Left" Margin="283,423,0,0" VerticalAlignment="Top" Width="243" Click="Button_Click" Height="82"/>
     </Grid>
 </Window>

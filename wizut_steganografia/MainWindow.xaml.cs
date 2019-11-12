@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -10,7 +11,6 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using System.Linq;
 
 namespace wizut_steganografia
 {
@@ -40,15 +40,12 @@ namespace wizut_steganografia
                 Bitmap ImgToMod = new Bitmap(LoadedImgPath.Content.ToString());
                 byte[] EncodedMsg = EncodeMsg(CustomMsg.Text);
                 ImgToMod = PutMsg(ImgToMod, EncodedMsg);
-                //_bmp = new Bitmap(ImgToMod);
                 if (ImgToMod == null)
                 {
                     UpdateStatus("Message is too long for this bitmap file.", true);
                     return;
                 }
-                //SaveImg.Source = Bitmap2BitmapSource(ImgToMod);
                 SaveImg.Source = ImageSourceFromBitmap(ImgToMod);
-                //_bmp = GetBitmap((BitmapSource)SaveImg.Source);
                 _imageEncrypted = true;
                 UpdateStatus("Message embedded into bitmap file.");
                 ImgToMod.Dispose();
@@ -140,7 +137,7 @@ namespace wizut_steganografia
 
             int seed = GetSeed();
             Random rX = new Random(seed),
-                rY = new Random(seed);
+                rY = new Random(seed * 2 / 3 + 1);
             int[,] CoordsBase = new int[NewMsg.Length * 4, 2];
 
             for (int i=0; i < NewMsg.Length; ++i)
@@ -152,7 +149,7 @@ namespace wizut_steganografia
                     {
                         x = rX.Next(0, ImgToMod.Width);
                         y = rY.Next(0, ImgToMod.Height);
-                    } while (CoordsNotDuplicated(CoordsBase, x, y, (i * 4) + (3 - j)));
+                    } while (AreCoordsDuplicated(CoordsBase, x, y, (i * 4) + (3 - j)));
 
                     CoordsBase[(i * 4) + (3 - j), 0] = x;
                     CoordsBase[(i * 4) + (3 - j), 1] = y;
@@ -185,13 +182,13 @@ namespace wizut_steganografia
             return ImgToMod;
         }
 
-        private bool CoordsNotDuplicated(int[,] coordsBase, int x, int y, int idx)
+        private bool AreCoordsDuplicated(int[,] coordsBase, int x, int y, int idx)
         {
             for (int ci = idx - 1; ci >= 0; ci--)
             {
-                if ((coordsBase[ci, 0] == x) && (coordsBase[ci, 1] == y)) return false;
+                if ((coordsBase[ci, 0] == x) && (coordsBase[ci, 1] == y)) return true;
             }
-            return true;
+            return false;
         }
 
         private bool GetBit(byte fromByte, int bitNum)
@@ -268,16 +265,17 @@ namespace wizut_steganografia
                 Bitmap ImgToRead;
                 if ((bool)ReadFromLoaded.IsChecked) ImgToRead = BitmapSource2Bitmap(LoadedImg.Source);
                 else ImgToRead = BitmapSource2Bitmap(SaveImg.Source);
-                byte[] msg = ReadMsg(ImgToRead);
+                byte[] msg;
                 try
                 {
+                    msg = ReadMsg(ImgToRead);
                     CustomMsg.Text = DecodeMsg(msg);
                     UpdateStatus("Message read and decoded.");
                 }
                 catch (Exception err)
                 {
                     CustomMsg.Text = err.Message;
-                    UpdateStatus("Error during decoding. Most probably incorrect password. Check error msg below.", true);
+                    UpdateStatus("Error during decoding. Most probably one of the keys is incorrect. Error msg below.", true);
                 }
                 ImgToRead.Dispose();
             }
@@ -291,7 +289,7 @@ namespace wizut_steganografia
         {
             int seed = GetSeed();
             Random rX = new Random(seed),
-                rY = new Random(seed);
+                rY = new Random(seed * 2 / 3 + 1);
             int[,] LenCoordsBase = new int[8, 2];
 
             int x, y;
@@ -302,38 +300,58 @@ namespace wizut_steganografia
                 {
                     x = rX.Next(0, imgToRead.Width);
                     y = rY.Next(0, imgToRead.Height);
-                } while (CoordsNotDuplicated(LenCoordsBase, x, y, ir);
+                } while (AreCoordsDuplicated(LenCoordsBase, x, y, ir));
 
                 LenCoordsBase[ir, 0] = x;
                 LenCoordsBase[ir, 1] = y;
             }
 
             //MyPoint[] idx = CalculateIndexes(new MyPoint(0, 0), imgToRead.Width);
-            byte lenInByte1 = ReadByte(imgToRead, GetIndexes());
+            byte lenInByte1 = ReadByte(imgToRead, GetPoints(LenCoordsBase, 0, 3));
             //idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
-            byte lenInByte2 = ReadByte(imgToRead, );
+            byte lenInByte2 = ReadByte(imgToRead, GetPoints(LenCoordsBase, 4, 7));
             int len = lenInByte1 * 256 + lenInByte2;
 
-            byte[] res = new byte[len];
-
-            for (int i = 0; i < len; i++)
+            if ((len < 0) || (len > 5000))
             {
-                idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
-                res[i] = ReadByte(imgToRead, idx);
+                UpdateStatus("Incorrect steganographic key.", true);
+                throw new Exception("Incorrect steganographic key.");
             }
-            return res;
+            else
+            {
+                byte[] res = new byte[len];
+
+                int[,] CoordsBase = new int[8 + len * 4, 2];
+                Array.Copy(LenCoordsBase, CoordsBase, LenCoordsBase.Length);
+
+                for (int ir = 8; ir < len * 4 + 8; ++ir)
+                {
+                    do
+                    {
+                        x = rX.Next(0, imgToRead.Width);
+                        y = rY.Next(0, imgToRead.Height);
+                    } while (AreCoordsDuplicated(CoordsBase, x, y, ir));
+
+                    CoordsBase[ir, 0] = x;
+                    CoordsBase[ir, 1] = y;
+                }
+
+                for (int i = 0; i < len; i++)
+                {
+                    res[i] = ReadByte(imgToRead, GetPoints(CoordsBase, i * 4 + 8, i * 4 + 11));
+                }
+                return res;
+            }
         }
 
-        private MyPoint[] GetRowsOf2DArray(int[,] arr, int start, int end)
+        private MyPoint[] GetPoints(int[,] arr, int start, int end)
         {
-            List 
+            List<MyPoint> points = new List<MyPoint>();
             for (int xi = start; xi <= end; ++xi)
             {
-                for (int yj = 0; yj < arr.GetLength(1); yj++)
-                {
-                    return new MyPoint(arr[xi, 0], arr[xi, 1]);
-                }
+                points.Add(new MyPoint(arr[xi, 0], arr[xi, 1]));
             }
+            return points.ToArray<MyPoint>();
         }
 
         private byte ReadByte(Bitmap imgToRead, MyPoint[] idx)
