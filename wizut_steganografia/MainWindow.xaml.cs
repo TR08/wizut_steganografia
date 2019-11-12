@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using System.Linq;
 
 namespace wizut_steganografia
 {
@@ -137,12 +138,25 @@ namespace wizut_steganografia
             Buffer.BlockCopy(msgLen, 0, NewMsg, 0, msgLen.Length);
             Buffer.BlockCopy(MsgToPut, 0, NewMsg, msgLen.Length, MsgToPut.Length);
 
-            int x = 0, y = 0,
-                i;
-            for (i=0; i < NewMsg.Length; ++i)
+            int seed = GetSeed();
+            Random rX = new Random(seed),
+                rY = new Random(seed);
+            int[,] CoordsBase = new int[NewMsg.Length * 4, 2];
+
+            for (int i=0; i < NewMsg.Length; ++i)
             {
                 for (int j = 3; j >= 0; --j)
                 {
+                    int x, y;
+                    do
+                    {
+                        x = rX.Next(0, ImgToMod.Width);
+                        y = rY.Next(0, ImgToMod.Height);
+                    } while (CoordsNotDuplicated(CoordsBase, x, y, (i * 4) + (3 - j)));
+
+                    CoordsBase[(i * 4) + (3 - j), 0] = x;
+                    CoordsBase[(i * 4) + (3 - j), 1] = y;
+
                     Color CurPixel = ImgToMod.GetPixel(x, y);
                     byte R = CurPixel.R,
                         G = CurPixel.G,
@@ -166,20 +180,18 @@ namespace wizut_steganografia
                     }
 
                     ImgToMod.SetPixel(x, y, Color.FromArgb(R, G, B));
-
-                    ++x;
-                    if (x >= ImgToMod.Width)
-                    {
-                        x = 0;
-                        ++y;
-                        if (y >= ImgToMod.Height)
-                        {
-                            return null;
-                        }
-                    }
                 }
             }
             return ImgToMod;
+        }
+
+        private bool CoordsNotDuplicated(int[,] coordsBase, int x, int y, int idx)
+        {
+            for (int ci = idx - 1; ci >= 0; ci--)
+            {
+                if ((coordsBase[ci, 0] == x) && (coordsBase[ci, 1] == y)) return false;
+            }
+            return true;
         }
 
         private bool GetBit(byte fromByte, int bitNum)
@@ -237,7 +249,7 @@ namespace wizut_steganografia
               source.PixelHeight,
               PixelFormat.Format32bppPArgb);
             BitmapData data = bmp.LockBits(
-              new System.Drawing.Rectangle(System.Drawing.Point.Empty, bmp.Size),
+              new Rectangle(System.Drawing.Point.Empty, bmp.Size),
               ImageLockMode.WriteOnly,
               PixelFormat.Format32bppPArgb);
             source.CopyPixels(
@@ -277,10 +289,29 @@ namespace wizut_steganografia
 
         private byte[] ReadMsg(Bitmap imgToRead)
         {
-            MyPoint[] idx = CalculateIndexes(new MyPoint(0, 0), imgToRead.Width);
-            byte lenInByte1 = ReadByte(imgToRead, idx);
-            idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
-            byte lenInByte2 = ReadByte(imgToRead, idx);
+            int seed = GetSeed();
+            Random rX = new Random(seed),
+                rY = new Random(seed);
+            int[,] LenCoordsBase = new int[8, 2];
+
+            int x, y;
+
+            for (int ir = 0; ir < 8; ++ir)
+            {
+                do
+                {
+                    x = rX.Next(0, imgToRead.Width);
+                    y = rY.Next(0, imgToRead.Height);
+                } while (CoordsNotDuplicated(LenCoordsBase, x, y, ir);
+
+                LenCoordsBase[ir, 0] = x;
+                LenCoordsBase[ir, 1] = y;
+            }
+
+            //MyPoint[] idx = CalculateIndexes(new MyPoint(0, 0), imgToRead.Width);
+            byte lenInByte1 = ReadByte(imgToRead, GetIndexes());
+            //idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
+            byte lenInByte2 = ReadByte(imgToRead, );
             int len = lenInByte1 * 256 + lenInByte2;
 
             byte[] res = new byte[len];
@@ -291,6 +322,18 @@ namespace wizut_steganografia
                 res[i] = ReadByte(imgToRead, idx);
             }
             return res;
+        }
+
+        private MyPoint[] GetRowsOf2DArray(int[,] arr, int start, int end)
+        {
+            List 
+            for (int xi = start; xi <= end; ++xi)
+            {
+                for (int yj = 0; yj < arr.GetLength(1); yj++)
+                {
+                    return new MyPoint(arr[xi, 0], arr[xi, 1]);
+                }
+            }
         }
 
         private byte ReadByte(Bitmap imgToRead, MyPoint[] idx)
@@ -386,6 +429,17 @@ namespace wizut_steganografia
             StatusLabel.Foreground = isError ? System.Windows.Media.Brushes.Red : System.Windows.Media.Brushes.Green;
             StatusLabel.Content = localDate + " - " + status;
             StatusLabel.ToolTip = status;
+        }
+
+        private int GetSeed()
+        {
+            int seed = 0;
+            char[] temp = StegKey.Text.ToCharArray();
+            foreach (char t in temp)
+            {
+                seed += t;
+            }
+            return seed;
         }
     }
 }
