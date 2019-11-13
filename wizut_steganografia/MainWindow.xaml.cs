@@ -27,7 +27,6 @@ namespace wizut_steganografia
             InitializeComponent();
             _imageLoaded = false;
             _imageEncrypted = false;
-            _encKey = Encoding.UTF8.GetBytes("mYk3Y");
         }
 
         private void PutMsgBtn_Click(object sender, RoutedEventArgs e)
@@ -125,19 +124,37 @@ namespace wizut_steganografia
             return plaintext;
         }
 
+        private byte[] JoinTwoByteArrays(byte[] arr1, byte[] arr2)
+        {
+            byte[] joined = new byte[arr1.Length + arr2.Length];
+            Buffer.BlockCopy(arr1, 0, joined, 0, arr1.Length);
+            Buffer.BlockCopy(arr2, 0, joined, arr1.Length, arr2.Length);
+            return joined;
+        }
+
         private Bitmap PutMsg(Bitmap ImgToMod, byte[] MsgToPut)
         {
             byte[] tempLen = BitConverter.GetBytes(MsgToPut.Length);
             byte[] msgLen = new byte[2];
             msgLen[0] = tempLen[1];
             msgLen[1] = tempLen[0];
-            byte[] NewMsg = new byte[msgLen.Length + MsgToPut.Length];
-            Buffer.BlockCopy(msgLen, 0, NewMsg, 0, msgLen.Length);
-            Buffer.BlockCopy(MsgToPut, 0, NewMsg, msgLen.Length, MsgToPut.Length);
+            byte[] NewMsg = JoinTwoByteArrays(msgLen, MsgToPut);
 
-            int seed = GetSeed();
-            Random rX = new Random(seed),
-                rY = new Random(seed * 2 / 3 + 1);
+            // error correction coding
+            NewMsg = ECC(NewMsg);
+
+            // permutation
+            int seed;// = GetSeed();
+            Random rX, rY;
+            using (SHA512 shaM = new SHA512Managed())
+            {
+                seed = BitConverter.ToInt32(shaM.ComputeHash(Encoding.UTF8.GetBytes(StegKey.Text)), 0);
+                rX = new Random(seed);
+                seed = BitConverter.ToInt32(shaM.ComputeHash(Encoding.UTF8.GetBytes(StegKey.Text)), 4);
+                rY = new Random(seed);
+            }
+            //Random rX = new Random(seed),
+            //    rY = new Random(seed * 2 / 3 + 1);
             int[,] CoordsBase = new int[NewMsg.Length * 4, 2];
 
             for (int i=0; i < NewMsg.Length; ++i)
@@ -182,6 +199,61 @@ namespace wizut_steganografia
             return ImgToMod;
         }
 
+        private byte[] ECC(byte[] newMsg)
+        {
+            byte[] ECCMsg = new byte[0];
+            foreach (byte b in newMsg)
+            {
+                byte[] newBytes = MaskByteWithFiveBytes(b);
+                byte[] temp = JoinTwoByteArrays(ECCMsg, newBytes);
+                ECCMsg = temp;
+            }
+            return ECCMsg;
+        }
+
+        private byte[] MaskByteWithFiveBytes(byte b)
+        {
+            bool[] bits = new bool[40];
+            byte[] bytes = new byte[5];
+            bool[] mask1 = new bool[] { true, true, false, true, false };
+            bool[] mask0 = new bool[] { false, false, true, false, true };
+            for (int bi = 7; bi >= 0; --bi)
+            {
+                if (GetBit(b, bi)) //1
+                {
+                    Buffer.BlockCopy(mask1, 0, bits, 5 * (7 - bi), 5);
+                }
+                else //0
+                {
+                    Buffer.BlockCopy(mask0, 0, bits, 5 * (7 - bi), 5);
+                }
+            }
+
+            for (int bi = 0; bi < 5; ++bi)
+            {
+                bytes[bi] = BitsToByte(SubArray(bits, 8 * bi, 8));
+            }
+            return bytes;
+        }
+
+        private bool[] SubArray(bool[] data, int index, int length)
+        {
+            bool[] result = new bool[length];
+            Array.Copy(data, index, result, 0, length);
+            return result;
+        }
+
+        private byte BitsToByte(bool[] arr)
+        {
+            byte val = 0;
+            foreach (bool b in arr)
+            {
+                val <<= 1;
+                if (b) val |= 1;
+            }
+            return val;
+        }
+
         private bool AreCoordsDuplicated(int[,] coordsBase, int x, int y, int idx)
         {
             for (int ci = idx - 1; ci >= 0; ci--)
@@ -192,7 +264,7 @@ namespace wizut_steganografia
         }
 
         private bool GetBit(byte fromByte, int bitNum)
-        {
+        { // 0-based, from right
             return Convert.ToBoolean((fromByte >> bitNum) & 1);
         }
 
@@ -287,14 +359,24 @@ namespace wizut_steganografia
 
         private byte[] ReadMsg(Bitmap imgToRead)
         {
-            int seed = GetSeed();
-            Random rX = new Random(seed),
-                rY = new Random(seed * 2 / 3 + 1);
-            int[,] LenCoordsBase = new int[8, 2];
+            // first two (ten after ECC) bytes for length
+            int seed;// = GetSeed();
+            Random rX, rY;
+            using (SHA512 shaM = new SHA512Managed())
+            {
+                seed = BitConverter.ToInt32(shaM.ComputeHash(Encoding.UTF8.GetBytes(StegKey.Text)), 0);
+                rX = new Random(seed);
+                seed = BitConverter.ToInt32(shaM.ComputeHash(Encoding.UTF8.GetBytes(StegKey.Text)), 4);
+                rY = new Random(seed);
+            }
+            //int seed = GetSeed();
+            //Random rX = new Random(seed),
+            //    rY = new Random(seed * 2 / 3 + 1);
+            int[,] LenCoordsBase = new int[40, 2];
 
             int x, y;
 
-            for (int ir = 0; ir < 8; ++ir)
+            for (int ir = 0; ir < 40; ++ir)
             {
                 do
                 {
@@ -306,13 +388,12 @@ namespace wizut_steganografia
                 LenCoordsBase[ir, 1] = y;
             }
 
-            //MyPoint[] idx = CalculateIndexes(new MyPoint(0, 0), imgToRead.Width);
-            byte lenInByte1 = ReadByte(imgToRead, GetPoints(LenCoordsBase, 0, 3));
-            //idx = CalculateIndexes(GetNextPoint(idx[3], imgToRead.Width), imgToRead.Width);
-            byte lenInByte2 = ReadByte(imgToRead, GetPoints(LenCoordsBase, 4, 7));
-            int len = lenInByte1 * 256 + lenInByte2;
+            byte lenInByte1 = ReadByteWithoutECC(imgToRead, LenCoordsBase, 0);
+            byte lenInByte2 = ReadByteWithoutECC(imgToRead, LenCoordsBase, 20);
+            int len = (lenInByte1 * 256 + lenInByte2) * 5; // *5 due to ECC
 
-            if ((len < 0) || (len > 5000))
+            // read message, reverse permutation
+            if ((len < 0) || (len > 10000))
             {
                 UpdateStatus("Incorrect steganographic key.", true);
                 throw new Exception("Incorrect steganographic key.");
@@ -340,8 +421,69 @@ namespace wizut_steganografia
                 {
                     res[i] = ReadByte(imgToRead, GetPoints(CoordsBase, i * 4 + 8, i * 4 + 11));
                 }
+
+                // reverse error correction coding
+                res = ReverseECC(res);
                 return res;
             }
+        }
+
+        private byte ReadByteWithoutECC(Bitmap imgToRead, int[,] lenCoordsBase, int start)
+        {
+            byte[] res = new byte[]
+            {
+                ReadByte(imgToRead, GetPoints(lenCoordsBase, start, start + 3)),
+                ReadByte(imgToRead, GetPoints(lenCoordsBase, start + 4, start + 7)),
+                ReadByte(imgToRead, GetPoints(lenCoordsBase, start + 8, start + 11)),
+                ReadByte(imgToRead, GetPoints(lenCoordsBase, start + 12, start + 15)),
+                ReadByte(imgToRead, GetPoints(lenCoordsBase, start + 16, start + 19))
+            };
+            res = DemaskFiveBytesIntoByte(res);
+            return res[0];
+        }
+
+        private byte[] ReverseECC(byte[] res)
+        {
+            byte[] DECCMsg = new byte[0];
+            for (int bi = 0; bi < res.Length; bi += 5)
+            {
+                byte[] newBytes = DemaskFiveBytesIntoByte(new byte[]
+                    {
+                        res[bi], res[bi + 1], res[bi + 2], res[bi + 3], res[bi + 4]
+                    });
+                byte[] temp = JoinTwoByteArrays(DECCMsg, newBytes);
+                DECCMsg = temp;
+            }
+            return DECCMsg;
+        }
+
+        private byte[] DemaskFiveBytesIntoByte(byte[] bytes)
+        {
+            bool[] bits = new bool[40];
+            bool[] newBits = new bool[8];
+            int i = 0;
+            foreach (byte b in bytes)
+            {
+                Buffer.BlockCopy(ByteToBits(b), 0, bits, i, 8);
+                i += 8;
+            }
+
+            for(i = 0; i < 40; i += 5)
+            {
+                int ones = (bits[i] ? 1 : 0) + (bits[i + 1] ? 1 : 0) + (bits[i + 2] ? 1 : 0) + (bits[i + 3] ? 1 : 0) + (bits[i + 4] ? 1 : 0);
+                if (ones > 2) newBits[i / 5] = true;
+                else newBits[i / 5] = false;
+            }
+            return new byte[] { BitsToByte(newBits) };
+        }
+
+        private static bool[] ByteToBits(byte b)
+        {
+            bool[] result = new bool[8];
+            for (int i = 0; i < 8; i++)
+                result[i] = (b & (1 << i)) == 0 ? false : true;
+            Array.Reverse(result);
+            return result;
         }
 
         private MyPoint[] GetPoints(int[,] arr, int start, int end)
