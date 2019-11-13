@@ -65,4 +65,4 @@ W katalogu projektu znajduje się przykładowy plik "lenna.bmp" oraz pliki z ju�
 - "polish_lenna.bmp":
   - klucz szyfrujący: "hasło",
   - klucz steganograficzny: "okoń",
-  - wiadomość: "Cieszy mię ten rym: \"Polak mądr po szkodzie\"; Lecz jeśli prawda i z tego nas zbodzie, Nową przypowieść Polak sobie kupi, Że i przed szkodą, i po szkodzie głupi." (w programie bez znaków ucieczki).
+  - wiadomość: "Cieszy mię ten rym: \\"Polak mądr po szkodzie\\"; Lecz jeśli prawda i z tego nas zbodzie, Nową przypowieść Polak sobie kupi, Że i przed szkodą, i po szkodzie głupi." (w programie bez znaków ucieczki).
