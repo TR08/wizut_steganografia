@@ -55,14 +55,14 @@ Pole na wprowadzenie klucza używanego przez program przy rozsiewaniu wiadomośc
 ## Przykłady
 W katalogu projektu znajduje się przykładowy plik "lenna.bmp" oraz pliki z już zakodowanymi wiadomościami:
 - "secret_lenna.bmp":
--- klucz szyfrujący: "mYk3Y",
--- klucz steganograficzny: "mYk3Y",
--- wiadomość: "My secret msg!!! :)",
+  - klucz szyfrujący: "mYk3Y",
+  - klucz steganograficzny: "mYk3Y",
+  - wiadomość: "My secret msg!!! :)",
 - "empty_lenna.bmp":
--- klucz szyfrujący: "",
--- klucz steganograficzny: "",
--- wiadomość: "",
+  - klucz szyfrujący: "",
+  - klucz steganograficzny: "",
+  - wiadomość: "",
 - "polish_lenna.bmp":
--- klucz szyfrujący: "hasło",
--- klucz steganograficzny: "okoń",
--- wiadomość: "Cieszy mię ten rym: \"Polak mądr po szkodzie\"; Lecz jeśli prawda i z tego nas zbodzie, Nową przypowieść Polak sobie kupi, Że i przed szkodą, i po szkodzie głupi." (w programie bez znaków ucieczki).
+  - klucz szyfrujący: "hasło",
+  - klucz steganograficzny: "okoń",
+  - wiadomość: "Cieszy mię ten rym: \"Polak mądr po szkodzie\"; Lecz jeśli prawda i z tego nas zbodzie, Nową przypowieść Polak sobie kupi, Że i przed szkodą, i po szkodzie głupi." (w programie bez znaków ucieczki).
