@@ -525,29 +525,6 @@ namespace wizut_steganografia
                 return new bool[] { (!M1), (!M2) };
             }
         }
-
-        private MyPoint[] CalculateIndexes(MyPoint start, int width)
-        {
-            MyPoint[] indexes = new MyPoint[] { start, new MyPoint(0, 0), new MyPoint(0, 0), new MyPoint(0, 0) };
-            
-            for (int i = 1; i < 4; ++i)
-            {
-                indexes[i].Y = indexes[i - 1].Y;
-                indexes[i].X = indexes[i - 1].X + 1;
-                if (indexes[i].X >= width)
-                {
-                    indexes[i].X = 0;
-                    indexes[i].Y++;
-                }
-            }
-            return indexes;
-        }
-
-        private MyPoint GetNextPoint(MyPoint CurPoint, int width)
-        {
-            if (CurPoint.X + 1 < width) return new MyPoint(CurPoint.X + 1, CurPoint.Y);
-            else return new MyPoint(0, CurPoint.Y + 1);
-        }
         
         private Bitmap BitmapSource2Bitmap(BitmapSource bitmapsource)
         {
@@ -592,7 +569,7 @@ namespace wizut_steganografia
         }
 
         private int GetSeed()
-        {
+        { // discarded due to SHA512 usage
             int seed = 0;
             char[] temp = StegKey.Text.ToCharArray();
             foreach (char t in temp)
