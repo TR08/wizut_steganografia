@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.29503.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wizut_steganografia", "wizut_steganografia\wizut_steganografia.csproj", "{74D867E8-5F2B-41A1-81CE-1E3DF2A92015}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JPEG", "JPEG\JPEG.csproj", "{DAB26524-FD4B-4AF6-9AB9-8ACD2B0EFD51}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{74D867E8-5F2B-41A1-81CE-1E3DF2A92015}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{74D867E8-5F2B-41A1-81CE-1E3DF2A92015}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{74D867E8-5F2B-41A1-81CE-1E3DF2A92015}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAB26524-FD4B-4AF6-9AB9-8ACD2B0EFD51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAB26524-FD4B-4AF6-9AB9-8ACD2B0EFD51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAB26524-FD4B-4AF6-9AB9-8ACD2B0EFD51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAB26524-FD4B-4AF6-9AB9-8ACD2B0EFD51}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
