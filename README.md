@@ -1,6 +1,6 @@
 # wizut_steganografia
 
-Program do ukrywania informacji w blikach BMP.
+Program do ukrywania informacji w blikach BMP z wykorzystaniem LSB.
 
 ## Program wykorzystuje
 - szyfrowanie AES
